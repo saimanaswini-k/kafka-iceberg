@@ -47,10 +47,10 @@ object KafkaToIcebergJob {
       val checkpointPath = s"file://$projectRoot/data/checkpoints"
       
       // Configure checkpointing
-      // val checkpointInterval = ConfigLoader.Flink.checkpointInterval
-      // val checkpointConfig = env.getCheckpointConfig
-      // checkpointConfig.setCheckpointInterval(checkpointInterval)
-      // checkpointConfig.setCheckpointStorage(checkpointPath)
+       val checkpointInterval = ConfigLoader.Flink.checkpointInterval
+       val checkpointConfig = env.getCheckpointConfig
+       checkpointConfig.setCheckpointInterval(checkpointInterval)
+       checkpointConfig.setCheckpointStorage(checkpointPath)
       
       // Create Kafka source with custom deserializer
       logger.info(s"Creating Kafka source for topic: ${ConfigLoader.Kafka.topic}")

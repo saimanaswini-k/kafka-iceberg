@@ -1,0 +1,107 @@
+plugins {
+    id 'scala'
+    id 'application'
+}
+
+group = 'com.example'
+version = '0.1.0-SNAPSHOT'
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://repository.apache.org/content/repositories/snapshots/"
+    }
+    maven {
+        url "https://repository.apache.org/content/repositories/releases/"
+    }
+    mavenLocal()
+}
+
+ext {
+    flinkVersion = '1.17.1'
+    json4sVersion = '4.0.6'
+    hadoopVersion = '3.3.6'
+    icebergVersion = '1.5.0'
+}
+
+dependencies {
+    implementation "org.scala-lang:scala-library:2.12.15"
+    
+    implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
+    compileOnly "org.apache.flink:flink-scala_2.12:${flinkVersion}"
+    compileOnly "org.apache.flink:flink-streaming-scala_2.12:${flinkVersion}"
+    compileOnly "org.apache.flink:flink-clients:${flinkVersion}"
+    compileOnly "org.apache.kafka:kafka-clients:3.6.1"
+    compileOnly "org.apache.flink:flink-table-common:${flinkVersion}"
+    compileOnly "org.apache.flink:flink-table-api-scala-bridge_2.12:${flinkVersion}"
+    implementation "org.apache.iceberg:iceberg-flink-runtime-1.17:${icebergVersion}"
+    implementation "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-client:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+    implementation "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+    implementation "org.json4s:json4s-core_2.12:${json4sVersion}"
+    implementation "org.json4s:json4s-jackson_2.12:${json4sVersion}"
+    implementation "org.json4s:json4s-ext_2.12:${json4sVersion}"
+    implementation "com.typesafe:config:1.4.2"
+    implementation "org.slf4j:slf4j-api:1.7.32"
+    implementation "org.slf4j:slf4j-log4j12:1.7.36"
+    implementation "log4j:log4j:1.2.17"
+    compileOnly "org.apache.spark:spark-core_2.12:3.5.3"
+    compileOnly "org.apache.spark:spark-sql_2.12:3.5.3"
+    implementation "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0"
+    implementation "joda-time:joda-time:2.10.14"
+    implementation "com.fasterxml.jackson.module:jackson-module-scala_2.12:2.15.2"
+    runtimeOnly "ch.qos.logback:logback-classic:1.2.10"
+    implementation "org.apache.flink:flink-connector-kafka:${flinkVersion}"
+    implementation "org.apache.flink:flink-sql-connector-kafka:${flinkVersion}"
+
+    // Exclude problematic netty transport
+    configurations.all {
+        exclude group: 'io.netty', module: 'netty-transport-native-epoll'
+    }
+
+    // Add appropriate Netty transport for macOS
+    def osArch = System.getProperty('os.arch').toLowerCase()
+    def classifier = osArch.contains('aarch64') ? 'osx-aarch_64' : 'osx-x86_64'
+    implementation group: 'io.netty', name: 'netty-transport-native-kqueue', version: '4.1.96.Final', classifier: classifier
+}
+
+// Force specific versions for certain dependencies
+configurations.all {
+    resolutionStrategy {
+        force "org.json4s:json4s-core_2.12:${json4sVersion}"
+        force "org.json4s:json4s-jackson_2.12:${json4sVersion}"
+        force "org.json4s:json4s-ext_2.12:${json4sVersion}"
+        force "org.json4s:json4s-ast_2.12:${json4sVersion}"
+        force "org.json4s:json4s-scalap_2.12:${json4sVersion}"
+        force "joda-time:joda-time:2.10.14"
+    }
+}
+
+application {
+    mainClass = 'com.example.KafkaToIcebergJob'
+}
+
+// Jar configuration with zip64 enabled
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.example.KafkaToIcebergJob'
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    zip64 = true  // Enable zip64 extension for large JARs
+}
+
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-release", "11"]
+}
+
+tasks.withType(JavaCompile) {
+    options.release = 11
+} 
